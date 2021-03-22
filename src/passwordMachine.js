@@ -5,74 +5,51 @@ const incrementValidCounter = assign({
 });
 
 const resetCounter = assign({
-  validCounter: 0,
+  validCounter: (context, event) => 0,
 });
 
-const generateId = (key, index) => `${key}#${index}`;
+const isKeyOk = (context, event) =>
+  event.key === context.code[context.validCounter];
 
-const createOnEventPress = ({ key, index }) => ({
-  on: {
-    PRESS: [
-      {
-        target: generateId(key, index),
-        cond: (context, event) => event.key === key,
-      },
-      { target: "invalid" },
-    ],
-  },
-});
+const isCodeOk = (context, event) =>
+  context.validCounter === context.code.length;
 
-export const createPasswordMachine = (code, onSuccess) => {
-  const codeWithIndexes = code.map((key, index) => ({
-    index,
-    key,
-  }));
-
-  const states = codeWithIndexes
-    .map(({ index, key }, i, array) => {
-      if (i === array.length - 1) {
-        return {
-          [generateId(key, index)]: {
-            entry: "incrementValidCounter",
-            always: "success",
-          },
-        };
-      } else {
-        return {
-          [generateId(key, index)]: {
-            entry: "incrementValidCounter",
-            ...createOnEventPress(array[i + 1]),
-            after: {
-              3000: "idle",
-            },
-          },
-        };
-      }
-    })
-    .reduce((acc, cur) => {
-      return {
-        ...acc,
-        ...cur,
-      };
-    }, {});
-
+export const createPasswordMachine = (onSuccess) => {
   return Machine(
     {
       id: "password",
       initial: "idle",
       context: {
+        code: ["t", "i", "s", "b", "a"],
         validCounter: 0,
       },
       states: {
         idle: {
-          entry: "resetCounter",
-          ...createOnEventPress(codeWithIndexes[0]),
+          on: {
+            PRESS: [
+              {
+                target: "idle",
+                actions: "incrementValidCounter",
+                cond: "isKeyOk",
+              },
+              { target: "invalid" },
+            ],
+          },
+          always: [{ target: "success", cond: "isCodeOk" }],
+          after: {
+            3000: {
+              target: "idle",
+              actions: "resetCounter",
+            },
+          },
         },
-        ...states,
         success: { type: "final", entry: "onSuccess" },
         invalid: {
           after: {
-            750: "idle",
+            750: {
+              target: "idle",
+              actions: "resetCounter",
+            },
           },
         },
       },
@@ -80,8 +57,12 @@ export const createPasswordMachine = (code, onSuccess) => {
     {
       actions: {
         incrementValidCounter,
-        resetCounter,
         onSuccess,
+        resetCounter,
+      },
+      guards: {
+        isKeyOk,
+        isCodeOk,
       },
     }
   );

@@ -28,10 +28,12 @@ function App() {
     "b",
     "a",
   ];
-  const passwordMachine = createPasswordMachine(code, () => {
+  const passwordMachine = createPasswordMachine(() => {
     console.log("System unlocked");
   });
-  const [current, send] = useMachine(passwordMachine, { devTools: true });
+  const [current, send] = useMachine(passwordMachine, { devTools: true, context: {
+    code
+  } });
   useKeyPress(send);
 
   const createClassName = (index) =>
@@ -44,7 +46,7 @@ function App() {
   return (
     <div className="h-full w-full flex flex-col justify-center items-center">
       <div className="w-full flex flex-row justify-center">
-        {code.map((key, index) => (
+        {current.context.code.map((key, index) => (
           <div key={index} className={createClassName(index)}></div>
         ))}
       </div>
